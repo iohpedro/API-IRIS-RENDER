@@ -1,0 +1,95 @@
+# =============================================================================
+# Docker Compose - Stack de Desenvolvimento Local
+# Sobe: API + Prometheus + Grafana
+# Uso: docker-compose up -d
+# =============================================================================
+#
+# IMPORTANTE: Este arquivo eh para desenvolvimento local apenas!
+# No Render, apenas a API eh deployada (sem Prometheus/Grafana)
+#
+# Portas:
+#   - API:        http://localhost:8000
+#   - Prometheus: http://localhost:9090
+#   - Grafana:    http://localhost:3000 (admin/admin)
+# =============================================================================
+
+services:
+  # -------------------------------------------------------------------------
+  # API FastAPI (nosso codigo)
+  # -------------------------------------------------------------------------
+  api:
+    build: .
+    container_name: api-iris-v2
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - JWT_SECRET=dev-secret-change-in-production
+      - TOKEN_EXPIRE_MINUTES=60
+      - LOG_LEVEL=INFO
+      - RATE_LIMIT_DEFAULT=60/minute
+      - RATE_LIMIT_PREDICT=30/minute
+      - RATE_LIMIT_BATCH=10/minute
+      - RATE_LIMIT_LOGIN=10/minute
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Prometheus (coleta metricas)
+  # Acessa http://api:8000/metrics a cada 15 segundos
+  # -------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus-v2
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  # -------------------------------------------------------------------------
+  # Grafana (visualiza dashboards)
+  # Login: admin / admin
+  # -------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana-v2
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+# Volumes persistentes (dados sobrevivem restart)
+volumes:
+  prometheus_data:
+  grafana_data:
+
+# Rede interna para comunicacao entre containers
+networks:
+  monitoring:
+    driver: bridge
