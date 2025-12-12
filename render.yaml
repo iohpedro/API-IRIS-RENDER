@@ -21,7 +21,7 @@ services:
   - type: web
     name: api-iris-v2
     runtime: docker
-    region: ohio  # Mesma região da v1 para consistência
+    # region: ohio  # Mesma região da v1 para consistência
     
     # =========================================================================
     # Plano de recursos
@@ -127,7 +127,7 @@ services:
   - type: web
     name: prometheus-iris-v2
     runtime: docker
-    region: ohio
+    # region: ohio
     plan: free
     dockerfilePath: ./prometheus/Dockerfile
     dockerContext: ./prometheus
@@ -146,7 +146,7 @@ services:
   - type: web
     name: grafana-iris-v2
     runtime: docker
-    region: ohio
+    # region: ohio
     plan: free
     dockerfilePath: ./grafana/Dockerfile
     dockerContext: ./grafana
@@ -160,3 +160,4 @@ services:
       # Datasource provisionado em grafana/provisioning/datasources/prometheus.yml
       - key: PROMETHEUS_URL
         value: "https://prometheus-iris-v2.onrender.com"
+
