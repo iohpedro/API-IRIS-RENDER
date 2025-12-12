@@ -1,0 +1,40 @@
+# =============================================================================
+# Configuracao do Prometheus
+# Define de onde coletar metricas e com qual frequencia
+# =============================================================================
+
+global:
+  # Intervalo de coleta (scrape)
+  scrape_interval: 15s
+  
+  # Intervalo de avaliacao de alertas
+  evaluation_interval: 15s
+
+# Arquivos de regras de alerta
+rule_files:
+  - "alerts.yml"
+
+# Configuracao de coleta de metricas
+scrape_configs:
+  # -------------------------------------------------------------------------
+  # API Iris v2
+  # Coleta metricas de http://api:8000/metrics
+  # -------------------------------------------------------------------------
+  - job_name: 'api-iris-v2'
+    static_configs:
+      - targets: ['api:8000']
+    metrics_path: /metrics
+    scheme: http
+    
+    # Adiciona labels extras para identificar a origem
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'api-iris-v2'
+
+  # -------------------------------------------------------------------------
+  # Prometheus (auto-monitoramento)
+  # -------------------------------------------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

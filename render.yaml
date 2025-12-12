@@ -1,0 +1,122 @@
+# =============================================================================
+# RENDER BLUEPRINT - API Iris v2 (Projeto Final)
+# =============================================================================
+# Este arquivo define a infraestrutura para deploy no Render.
+# 
+# Diferenças da v1 (aula_06):
+# - Nome do serviço: api-iris-v2 (para coexistir com v1)
+# - Novas variáveis de ambiente para rate limiting
+# - Mesmo modelo, mais features de produção
+#
+# Para deploy:
+# 1. Conecte o repositório ao Render
+# 2. Selecione este arquivo como Blueprint
+# 3. O Render criará o serviço automaticamente
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # WEB SERVICE - API de Inferência v2
+  # ===========================================================================
+  - type: web
+    name: api-iris-v2
+    runtime: docker
+    region: ohio  # Mesma região da v1 para consistência
+    
+    # =========================================================================
+    # Plano de recursos
+    # =========================================================================
+    # free: Ideal para desenvolvimento/aprendizado
+    # starter: Para produção leve ($7/mês)
+    # standard: Para produção com mais recursos ($25/mês)
+    plan: free
+    
+    # =========================================================================
+    # Configuração do Docker
+    # =========================================================================
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
+    # =========================================================================
+    # Health Check
+    # =========================================================================
+    # O Render verifica periodicamente se a API está respondendo
+    healthCheckPath: /health
+    
+    # =========================================================================
+    # Variáveis de Ambiente
+    # =========================================================================
+    envVars:
+      # -----------------------------------------------------------------------
+      # Configuração da Aplicação
+      # -----------------------------------------------------------------------
+      - key: APP_ENV
+        value: production
+      
+      - key: LOG_LEVEL
+        value: INFO
+      
+      # -----------------------------------------------------------------------
+      # Segurança - JWT
+      # -----------------------------------------------------------------------
+      # IMPORTANTE: Em produção, gere uma chave secreta forte!
+      # Use: python -c "import secrets; print(secrets.token_hex(32))"
+      - key: SECRET_KEY
+        generateValue: true  # Render gera automaticamente
+      
+      - key: ALGORITHM
+        value: HS256
+      
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      
+      # -----------------------------------------------------------------------
+      # Rate Limiting
+      # -----------------------------------------------------------------------
+      # Configurações de limite de requisições por minuto
+      - key: RATE_LIMIT_DEFAULT
+        value: "60"  # Requisições padrão por minuto
+      
+      - key: RATE_LIMIT_PREDICT
+        value: "30"  # Predições individuais por minuto
+      
+      - key: RATE_LIMIT_BATCH
+        value: "10"  # Predições em batch por minuto
+      
+      - key: RATE_LIMIT_LOGIN
+        value: "10"  # Tentativas de login por minuto
+      
+      # -----------------------------------------------------------------------
+      # Configuração do Modelo
+      # -----------------------------------------------------------------------
+      - key: MODEL_PATH
+        value: "app/models/iris_model.pkl"
+      
+      - key: MODEL_VERSION
+        value: "2.0.0"
+      
+      # -----------------------------------------------------------------------
+      # Métricas (desabilitado em produção free tier)
+      # -----------------------------------------------------------------------
+      # No plano free do Render, não temos Prometheus/Grafana
+      # As métricas ficam expostas em /metrics mas não são coletadas
+      - key: METRICS_ENABLED
+        value: "true"
+      
+      # -----------------------------------------------------------------------
+      # CORS
+      # -----------------------------------------------------------------------
+      # Em produção, configure os origins permitidos
+      # Exemplo: "https://meusite.com,https://app.meusite.com"
+      - key: CORS_ORIGINS
+        value: "*"  # Permite todos (apenas para demo)
+      
+      # -----------------------------------------------------------------------
+      # Usuários de demo
+      # -----------------------------------------------------------------------
+      # Em produção real, use um banco de dados!
+      - key: DEMO_USER
+        value: "admin"
+      
+      - key: DEMO_PASSWORD
+        value: "secret123"

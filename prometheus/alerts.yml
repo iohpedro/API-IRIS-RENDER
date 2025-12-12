@@ -1,0 +1,79 @@
+# =============================================================================
+# Regras de Alerta do Prometheus
+# Define condicoes que disparam alertas automaticos
+# =============================================================================
+
+groups:
+  - name: api_iris_alerts
+    rules:
+      # -----------------------------------------------------------------------
+      # ALERTA: API Down
+      # Dispara se a API nao responder por mais de 1 minuto
+      # -----------------------------------------------------------------------
+      - alert: APIDown
+        expr: up{job="api-iris-v2"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API Iris v2 esta DOWN"
+          description: "A API nao esta respondendo ha mais de 1 minuto."
+
+      # -----------------------------------------------------------------------
+      # ALERTA: Taxa de Erro Alta
+      # Dispara se mais de 5% das requisicoes falharem (5xx)
+      # -----------------------------------------------------------------------
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) 
+          / 
+          sum(rate(http_requests_total[5m])) 
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taxa de erro alta na API"
+          description: "Mais de 5% das requisicoes estao falhando nos ultimos 5 minutos."
+
+      # -----------------------------------------------------------------------
+      # ALERTA: Latencia Alta
+      # Dispara se p95 de latencia for maior que 1 segundo
+      # -----------------------------------------------------------------------
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latencia alta na API"
+          description: "O percentil 95 de latencia esta acima de 1 segundo."
+
+      # -----------------------------------------------------------------------
+      # ALERTA: Modelo Nao Carregado
+      # Dispara se o modelo ML nao estiver disponivel
+      # -----------------------------------------------------------------------
+      - alert: ModelNotLoaded
+        expr: model_loaded == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Modelo ML nao carregado"
+          description: "O modelo de Machine Learning nao esta disponivel."
+
+      # -----------------------------------------------------------------------
+      # ALERTA: Rate Limit Excessivo
+      # Dispara se muitas requisicoes forem bloqueadas por rate limit
+      # -----------------------------------------------------------------------
+      - alert: HighRateLimitBlocks
+        expr: rate(rate_limit_exceeded_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Muitas requisicoes bloqueadas por rate limit"
+          description: "Mais de 1 requisicao por segundo esta sendo bloqueada."
